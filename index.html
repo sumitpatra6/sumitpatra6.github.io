@@ -1,0 +1,2958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Analysis Report</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    line-height: 1.6;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: #f8fafc;
+    padding: 40px 0 30px;
+    margin-bottom: 30px;
+  }
+  header h1 { margin: 0 0 8px; font-size: 2rem; font-weight: 700; }
+  header .subtitle { opacity: 0.7; font-size: 0.95rem; }
+
+  /* Filter bar */
+  .filter-bar {
+    background: #ffffff;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .filter-bar .label { font-weight: 600; font-size: 0.85rem; color: #64748b; margin-right: 8px; }
+  .filter-btn {
+    border: 2px solid #e2e8f0;
+    background: #ffffff;
+    color: #475569;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+  .filter-btn:hover { border-color: var(--btn-color, #94a3b8); color: var(--btn-color, #334155); }
+  .filter-btn.active {
+    background: var(--btn-color, #1e293b);
+    border-color: var(--btn-color, #1e293b);
+    color: #ffffff;
+  }
+
+  /* Cards grid */
+  .cards { display: grid; grid-template-columns: 1fr; gap: 20px; padding-bottom: 60px; }
+  @media (min-width: 768px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+
+  .card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    overflow: hidden;
+  }
+  .card:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.1); transform: translateY(-2px); }
+  .card.hidden { display: none; }
+
+  .card-header { padding: 20px 20px 12px; }
+  .card-body { padding: 0 20px 16px; flex: 1; }
+  .card-footer { padding: 12px 20px; border-top: 1px solid #f1f5f9; }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .badge {
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .card-title { margin: 0 0 8px; font-size: 1.1rem; line-height: 1.4; }
+  .card-title a { color: #1e293b; text-decoration: none; }
+  .card-title a:hover { color: #3b82f6; text-decoration: underline; }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: #94a3b8; }
+  .meta-item { white-space: nowrap; }
+
+  .summary { font-size: 0.92rem; color: #475569; margin: 0 0 14px; }
+
+  /* Impact box */
+  .impact-box {
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .impact-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .impact-label { font-weight: 600; font-size: 0.82rem; color: #92400e; }
+  .impact-dots { display: flex; gap: 4px; }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    display: inline-block;
+  }
+  .dot.filled { background: #f59e0b; }
+  .impact-text { margin: 4px 0 0; font-size: 0.85rem; color: #78350f; }
+
+  /* Facts */
+  .facts-list { margin: 0 0 14px; padding-left: 20px; font-size: 0.88rem; color: #475569; }
+  .facts-list li { margin-bottom: 6px; }
+
+  /* Reasoning */
+  .reasoning { margin: 0; }
+  .reasoning summary {
+    cursor: pointer;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #64748b;
+    padding: 4px 0;
+    user-select: none;
+  }
+  .reasoning summary:hover { color: #3b82f6; }
+  .reasoning p { font-size: 0.85rem; color: #64748b; margin: 8px 0 0; line-height: 1.5; }
+
+  /* Footer link */
+  .read-link {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #3b82f6;
+    text-decoration: none;
+  }
+  .read-link:hover { text-decoration: underline; }
+
+  /* Empty state */
+  .no-results {
+    display: none;
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    grid-column: 1 / -1;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>News Analysis Report</h1>
+    <div class="subtitle">48 articles &middot; Source: news_analysis_20260228.csv</div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="filter-bar">
+    <span class="label">Filter:</span>
+    <button class="filter-btn active" data-filter="all">All</button>
+    
+    <button class="filter-btn" data-filter="business" style="--btn-color:#059669">Business</button>
+    
+    <button class="filter-btn" data-filter="career & upskilling" style="--btn-color:#2563eb">Career & Upskilling</button>
+    
+    <button class="filter-btn" data-filter="crime & justice" style="--btn-color:#6b7280">Crime & Justice</button>
+    
+    <button class="filter-btn" data-filter="labour laws & salary" style="--btn-color:#d97706">Labour Laws & Salary</button>
+    
+    <button class="filter-btn" data-filter="law & judiciary" style="--btn-color:#6b7280">Law & Judiciary</button>
+    
+    <button class="filter-btn" data-filter="law & justice" style="--btn-color:#6b7280">Law & Justice</button>
+    
+    <button class="filter-btn" data-filter="personal finance" style="--btn-color:#16a34a">Personal Finance</button>
+    
+    <button class="filter-btn" data-filter="politics" style="--btn-color:#3b82f6">Politics</button>
+    
+    <button class="filter-btn" data-filter="science & health" style="--btn-color:#0891b2">Science & Health</button>
+    
+    <button class="filter-btn" data-filter="sports & entertainment" style="--btn-color:#f59e0b">Sports & Entertainment</button>
+    
+    <button class="filter-btn" data-filter="taxation & budget" style="--btn-color:#dc2626">Taxation & Budget</button>
+    
+    <button class="filter-btn" data-filter="technology" style="--btn-color:#8b5cf6">Technology</button>
+    
+    <button class="filter-btn" data-filter="workplace culture" style="--btn-color:#db2777">Workplace Culture</button>
+    
+  </div>
+  <div class="cards" id="cards">
+    
+    <article class="card" data-categories="politics sports & entertainment" data-index="0">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#f59e0b">Sports & Entertainment</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/sports/international-sports/will-lionel-messi-meet-president-trump-inter-miami-white-house-visit-sparks-anticipation/articleshow/128867747.cms" target="_blank" rel="noopener">Will Lionel Messi meet President Trump? Inter Miami White House visit sparks anticipation</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Barsha Dutta/ TIMESOFINDIA.COM /Feb 28, 2026, 04:15 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Inter Miami CF, fresh off its first MLS Cup win, is slated to visit the White House on March 5, potentially with Lionel Messi. The trip honors the team’s triumph and continues the U.S. tradition of celebrating championship squads at the nation’s most symbolic venue.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Inter Miami CF will visit the White House on March 5 to celebrate winning the 2025 MLS Cup.</li>
+          
+          <li>The club’s championship was earned by defeating Vancouver Whitecaps; it is Inter Miami’s first league title since joining MLS in 2020.</li>
+          
+          <li>Lionel Messi may attend, which would be his first White‑House visit and could involve a meeting with President Donald Trump.</li>
+          
+          <li>The ceremony follows a tradition of U.S. championship teams being honored at the White House; Columbus Crew did so in 2024 and David Beckham attended a similar event in 2012.</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/sports/international-sports/will-lionel-messi-meet-president-trump-inter-miami-white-house-visit-sparks-anticipation/articleshow/128867747.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="sports & entertainment" data-index="1">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#f59e0b">Sports & Entertainment</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/entertainment/hindi/bollywood/news/sudha-chandran-recalls-quiet-gesture-by-salman-khan-when-her-mother-was-battling-cancer-he-has-got-a-heart-of-gold/articleshow/128867724.cms" target="_blank" rel="noopener">Sudha Chandran recalls quiet gesture by Salman Khan when her mother was battling cancer: &#x27;He has got a heart of gold&#x27;</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TOI Entertainment Desk/ etimes.in /Feb 28, 2026, 04:13 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Veteran actress Sudha Chandran shares how Salman Khan showed unexpected kindness during her mother’s illness, highlighting his generosity.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial or career impact for employees.</p>
+        </div>
+        
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/entertainment/hindi/bollywood/news/sudha-chandran-recalls-quiet-gesture-by-salman-khan-when-her-mother-was-battling-cancer-he-has-got-a-heart-of-gold/articleshow/128867724.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business" data-index="2">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/sports/nfl/news/russell-wilson-and-ciara-make-life-changing-2m-donation-to-transform-childrens-healthcare-in-mexico/articleshow/128866786.cms" target="_blank" rel="noopener">Russell Wilson and Ciara make life-changing $2M donation to transform children’s healthcare in Mexico</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Barsha Dutta/ TIMESOFINDIA.COM /Feb 28, 2026, 04:12 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct effect on employees’ finances or careers.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Russell Wilson and wife Ciara pledged $2 million to the Los Cabos Children’s Foundation in Baja California Sur, Mexico, announced on 2024‑?? (exact date not specified).</li>
+          
+          <li>The donation will fund life‑critical medical care and rehabilitation for children with seven major health priorities: cancer, congenital heart disease, etc.</li>
+          
+          <li>Wilson’s Why Not You Foundation has been operating since 2014 and aims to reach about 18,000 kids‑–‑..</li>
+          
+          <li>Earlier in November 2023, they donated $3 million to Mount …</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/sports/nfl/news/russell-wilson-and-ciara-make-life-changing-2m-donation-to-transform-childrens-healthcare-in-mexico/articleshow/128866786.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="3">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/bareilly/gutkha-stains-deface-meerut-rrts-station-days-after-inauguration/articleshow/128863607.cms" target="_blank" rel="noopener">Gutkha stains deface Meerut RRTS station days after inauguration</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Krishna Chaudhary/Feb 28, 2026, 04:11 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>NCR …</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/bareilly/gutkha-stains-deface-meerut-rrts-station-days-after-inauguration/articleshow/128863607.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="4">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/coimbatore/pmk-advocate-balu-urges-tamil-nadu-govt-to-set-up-high-court-bench-in-coimbatore/articleshow/128863578.cms" target="_blank" rel="noopener">PMK advocate Balu urges Tamil Nadu govt to set up high court bench in Coimbatore</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 04:10 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>We …</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Balu urged setting up a circuit bench of Madras High Court in Coimbatore on Friday.</li>
+          
+          <li>He cited 25 judge posts vacant in the court and 24 recommended names awaiting approval.</li>
+          
+          <li>Residents of Coimbatore, Tirupur, Karur and Nilgiris face logistical/financial difficulties traveling to Chennai for legal proceedings.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/coimbatore/pmk-advocate-balu-urges-tamil-nadu-govt-to-set-up-high-court-bench-in-coimbatore/articleshow/128863578.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics crime & justice" data-index="5">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#6b7280">Crime & Justice</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/coimbatore/dmk-man-held-in-krishnagiri-for-death-of-toddler-he-sexually-assaulted/articleshow/128863601.cms" target="_blank" rel="noopener">DMK man held in Krishnagiri for death of toddler he sexually assaulted</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 04:10 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">A DMK youth wing leader in Krishnagiri was arrested for sexually assaulting and causing the death of a toddler, leading to criminal charges under the Protection of Children from Sexual Offences Act.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This article does not affect any employee’s …</p>
+        </div>
+        
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/coimbatore/dmk-man-held-in-krishnagiri-for-death-of-toddler-he-sexually-assaulted/articleshow/128863601.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business career & upskilling" data-index="6">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#2563eb">Career & Upskilling</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/ahmedabad/icai-ahmedabad-to-focus-on-global-professional-opportunities/articleshow/128863585.cms" target="_blank" rel="noopener">ICAI Ahmedabad to focus on global professional opportunities</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Feb 28, 2026, 04:10 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">We need..</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>The initiative may open cross‑border assignments and enhance skill sets, potentially increasing earning potential for employees.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>ICAI Ahmedabad branch (WIRC) has appointed a new leadership team on Thursday, with Rinkesh Shah as chairman, Samir Chaudhary as vice‑chairman</li>
+          
+          <li>The new chairperson’s agenda focuses on expanding international learning platforms and cross‑border assignments for members and students</li>
+          
+          <li>Sahil Gala was appointed chairman of the WICASA Ahmedabad – the student wing of ICAI</li>
+          
+          <li>No financial or tax policy changes were reported in the article</li>
+          
+          <li>The article does not mention any specific date‑time…</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/ahmedabad/icai-ahmedabad-to-focus-on-global-professional-opportunities/articleshow/128863585.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="technology business" data-index="7">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#8b5cf6">Technology</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/pune/centre-of-excellence-opens-at-coep-tech-univ/articleshow/128863594.cms" target="_blank" rel="noopener">Centre of excellence opens at CoEP Tech Univ</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 04:10 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">A new R Vasudevan Centre of Research &amp; Development opened at CoEP University in Pune, covering 18,000 sqft and built by Vascon …</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>Informational; no immediate effect on an employee’s finances or career.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The R Vasudevan Centre of Research & Development was inaugurated on Friday at CoEP Technological University, Pune.</li>
+          
+          <li>The centre occupies a 18,000‑sqft built‑up area constructed by Vascon Engineers on the university campus.</li>
+          
+          <li>Its focus areas include sustainable construction materials, advanced technologies, robotics, smart infrastructure, BIM, and green building practices.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/pune/centre-of-excellence-opens-at-coep-tech-univ/articleshow/128863594.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics technology" data-index="8">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#8b5cf6">Technology</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/nagpur/now-exam-paper-runners-must-share-live-location-to-stem-leak/articleshow/128863598.cms" target="_blank" rel="noopener">Now, exam paper runners must share live location to stem leak</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Abhishek Choudhari/Feb 28, 2026, 04:10 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Nagpur exam board tightens security by mandating live GPS tracking for runners and offline CCTV storage to curb paper leaks.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial effect on employees.</p>
+        </div>
+        
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/nagpur/now-exam-paper-runners-must-share-live-location-to-stem-leak/articleshow/128863598.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business politics" data-index="9">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/pune/study-67-alignment-options-before-finalising-underground-tunnel-plan-pmrda/articleshow/128863582.cms" target="_blank" rel="noopener">Study 6–7 alignment options before finalising underground tunnel plan: PMRDA</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Nisha Nambiar/Feb 28, 2026, 04:10 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Pune’s PMRDA is revisiting a ₹32 000‑crore underground tunnel plan, asking consultants to produce six to seven new alignment options before finalising the DPR. The original 54‑km north‑south corridor may be altered to cover more congested areas, with decisions on cost and funding pending after a revised pre‑f…</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees; it is an infrastructure planning decision.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The PMRDA has instructed consultants to develop six to seven alignment options for a Rs32,000‑crore underground tunnel network before finalising the DPR.</li>
+          
+          <li>The project was originally planned as a 54 km north–south corridor between Yerwada and Katraj but may be realigned to include east‑west stretches and other high‑congestion areas.</li>
+          
+          <li>The directive came during the 19th PUMTA review meeting on Thursday, chaired by Divisional Commissioner Chandrakant Pulkundwar, with PMRDA commissioner Yogesh Mhase emphasizing that a ₹32 000‑crore project must be “truly beneficial” for citizens.</li>
+          
+          <li>Consultants were previously asked to strengthen the pre‑feasibility report using third‑party mobility data and robust traffic projections; final costs, funding patterns and timelines will be set after reviewing the revised pre‑feasibility report.</li>
+          
+          <li>The initiative aligns with Chief Minister Devendra Fadnavis’s vision of underground roads as a long‑term solution to Pune’s gridlock, and Maha Metro highlighted the need for alignment with the city’s parking policy.</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/pune/study-67-alignment-options-before-finalising-underground-tunnel-plan-pmrda/articleshow/128863582.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="10">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/meerut/officials-dump-adulterated-sweets-in-dustbin-crowd-takes-them-away/articleshow/128863588.cms" target="_blank" rel="noopener">Officials dump adulterated sweets in dustbin; crowd takes them away</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Rahul Singh/Feb 28, 2026, 04:10 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This ...</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Sunil Kumar, assistant commissioner (food security) ..</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/meerut/officials-dump-adulterated-sweets-in-dustbin-crowd-takes-them-away/articleshow/128863588.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business labour laws & salary" data-index="11">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#d97706">Labour Laws & Salary</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/holi-travel-surge-packs-trains-as-bus-services-remain-patchy/articleshow/128863573.cms" target="_blank" rel="noopener">Holi travel surge packs trains as bus services remain patchy</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 04:09 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The article reports a surge in train passengers at Jaipur Junction and other stations ahead of Holi, with chaotic scenes on platforms 1-4 on Saturday.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/holi-travel-surge-packs-trains-as-bus-services-remain-patchy/articleshow/128863573.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="12">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/nagaur-police-arrest-150-in-anti-drug-drive-in-6-months/articleshow/128863568.cms" target="_blank" rel="noopener">Nagaur police arrest 150 in anti-drug drive in 6 months</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Feb 28, 2026, 04:09 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">In August 2025, Nagaur police launched Operation Neelkanth, arresting 150 suspects and seizing over 8 crore rupees of drugs—including doda‑post, opium and synthetic‑drug precursors—after a 200% spike in NDPS cases. The crackdown exposed a large drug‑trafficking network that had previously gone unnoticed.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This article does not affect any employee’s personal finances or career.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Operation Neelkanth launched on Aug 4 2025 targeting narcotics supply chains in Nagaur district, leading to 150 arrests including 12 key ringleaders.</li>
+          
+          <li>Police seized 3,347 kg of doda‑post, 15 kg of opium and 1,488 kg of MD drugs, with contraband valued at Rs 8.2 crore.</li>
+          
+          <li>91 NDPS Act cases were registered during the operation, a 200% rise compared to the same period in the previous year (Aug 2024‑Feb 2025).</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/nagaur-police-arrest-150-in-anti-drug-drive-in-6-months/articleshow/128863568.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="13">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/jda-extends-dates-for-mobility-plan-review/articleshow/128863562.cms" target="_blank" rel="noopener">JDA extends dates for mobility plan review</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 04:09 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees; it merely reflects local policy changes.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The Jaipur Development Authority (JDA) extended the deadline for public submissions on its Comprehensive Mobility Plan (CMP) until March 6, 2024, adding seven days to the original June 26 deadline.</li>
+          
+          <li>The CMP draft was first released publicly on February 18, 202‑…</li>
+          
+          <li>...</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/jda-extends-dates-for-mobility-plan-review/articleshow/128863562.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="sports & entertainment" data-index="14">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#f59e0b">Sports & Entertainment</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/sports/nba/top-stories/is-giannis-antetokounmpo-playing-tonight-vs-the-new-york-knicks-latest-update-on-the-milwaukee-bucks-stars-injury-report-february-27-2026/articleshow/128867205.cms" target="_blank" rel="noopener">Is Giannis Antetokounmpo playing tonight vs the New York Knicks? Latest update on the Milwaukee Bucks star&#x27;s injury report (February 27, 2026)</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Raunak Bose/ TIMESOFINDIA.COM /Feb 28, 2026, 04:08 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">The NBA‑in‑lifetime‑of‑…</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees; it is purely sports news.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Giannis Antetokounmpo is out for the Milwaukee Bucks vs. New York Knicks game on February 27, 2026 due to a right calf strain sustained January 23, with an expected recovery of four‑to‑six weeks.</li>
+          
+          <li>The Bucks have missed 15 consecutive games since late January and are currently 42-13, leading the Eastern Conference; they rely on players like Kyle Kuzma (12.9 ppg) and Bobby Portis to fill his absence.</li>
+          
+          <li>New York Knicks will field a largely intact lineup, missing only Miles McBride (post‑surgery) and Pacome Dadiet (G‑League assignment).</li>
+          
+          <li>The game is scheduled for 8:00 PM ET at Fiserv Forum; the outcome could influence standings as both teams are near the top of the conference.</li>
+          
+          <li>Doc Rivers reports no setbacks in Giannis’s recovery, but he has not yet returned to full five‑five work.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/sports/nba/top-stories/is-giannis-antetokounmpo-playing-tonight-vs-the-new-york-knicks-latest-update-on-the-milwaukee-bucks-stars-injury-report-february-27-2026/articleshow/128867205.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics" data-index="15">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/india/katara-case-sc-grants-yadav-one-week-furlough-to-spend-holi-with-family/articleshow/128867718.cms" target="_blank" rel="noopener">Katara case: SC grants Yadav one-week furlough to spend Holi with family</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; PTI /Feb 28, 2026, 04:07 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Supreme Court granted furlough to convicted murderer Vikas Yadav for Holi after earlier rejection by Delhi High Court.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees.</p>
+        </div>
+        
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/india/katara-case-sc-grants-yadav-one-week-furlough-to-spend-holi-with-family/articleshow/128867718.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics" data-index="16">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/india/breaking-news-live-updates-february-28/liveblog/128862711.cms" target="_blank" rel="noopener">Title not found</a>
+          
+        </h2>
+        <div class="meta">
+          
+          
+          <span class="meta-item">&#128197; 2026-02-28T04:05:40+05:30</span>
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">No content.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct effect on an employee’s finances or career as the article provides no substantive information.</p>
+        </div>
+        
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>{&quot;Politics&quot;: &quot;The ...」} The user wants? The content? We need to analyze…We…..We……We……………………………………………JSON…We…………………………………………………………………………...{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/india/breaking-news-live-updates-february-28/liveblog/128862711.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="sports & entertainment" data-index="17">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#f59e0b">Sports & Entertainment</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/sports/nfl/news/will-taylor-swift-and-travis-kelce-attend-the-2026-brit-awards-rumors-swirl-as-the-night-approaches/articleshow/128849741.cms" target="_blank" rel="noopener">Will Taylor Swift and Travis Kelce attend the 2026 Brit Awards? Rumors swirl as the night approaches</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Barsha Dutta/ TIMESOFINDIA.COM /Updated: Feb 28, 2026, 04:01 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Travis Kelce and Taylor Swift were spotted in New York after a low‑profile period, reigniting speculation about their relationship and potential public appearances, but Swift confirmed she will not attend the 2026 Brit Awards.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct effect on an employee’s finances or career.</p>
+        </div>
+        
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/sports/nfl/news/will-taylor-swift-and-travis-kelce-attend-the-2026-brit-awards-rumors-swirl-as-the-night-approaches/articleshow/128849741.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business taxation & budget personal finance" data-index="18">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#dc2626">Taxation & Budget</span>
+          
+          <span class="badge" style="background:#16a34a">Personal Finance</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/astrology/horoscope/libra-horoscope-today-february-28-2026-keep-your-spending-tight-and-planned/articleshow/128826607.cms" target="_blank" rel="noopener">Libra Horoscope Today, February 28, 2026: Keep your spending tight and planned</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; AstroDevam/ TOI Astrology /Feb 28, 2026, 04:00 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">We…..…………………………………………………</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>It encourages employees to explore side gigs and manage spending, potentially affecting their disposable income and future savings.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The article is a daily horoscope‑titled “… ………………………………………………………………………………………………………………………………………………The … ………‑ ………………………‐ …………………………… ………‑……………………………………………………</li>
+          
+          <li>analysis</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/astrology/horoscope/libra-horoscope-today-february-28-2026-keep-your-spending-tight-and-planned/articleshow/128826607.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business taxation & budget" data-index="19">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#dc2626">Taxation & Budget</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/world/middle-east/uae-to-oman-by-car-this-eid-al-fitr-visa-insurance-and-border-fees-explained/articleshow/128864604.cms" target="_blank" rel="noopener">UAE to Oman by car this Eid al Fitr? Visa, insurance and border fees explained</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TOI World Desk/ TIMESOFINDIA.COM /Feb 28, 2026, 03:58 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">The UAE will observe Eid‑al‑Fira …</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This …</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>UAE Eid al Fitr 2026 public holiday dates: federal employees Thursday March 19 – Sunday March 22; private sector Thursday March 19 – Saturday March 21 (possible extension to Sunday if Ramadan lasts full 30 days).</li>
+          
+          <li>Most UAE residents can obtain a visa on arrival at the Oman border, valid for up to 14 days and cost‑free or around 5 Omani Rials (~AED 47) depending on nationality.</li>
+          
+          <li>The Orange Card insurance required for driving in Oman costs approximately AED 106 (≈OMR 10) for minimum 5‑day coverage and can be purchased at the border if not already covered by a UAE‑issued policy.</li>
+          
+          <li>An exit fee of ~AED 35 is charged when leaving the UAE at the border.</li>
+          
+          <li>Required documents: valid passport with ≥6 months validity, Emirates ID or GCC residence card, driver’s licence, vehicle registration (Mulkiya), insurance certificate covering Oman, and a notarised NOC if driving a borrowed/rented/financed vehicle.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/world/middle-east/uae-to-oman-by-car-this-eid-al-fitr-visa-insurance-and-border-fees-explained/articleshow/128864604.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business taxation & budget" data-index="20">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#dc2626">Taxation & Budget</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/noida/rs-115-crore-swamih-funds-set-to-revive-antriksh-valley-project/articleshow/128863548.cms" target="_blank" rel="noopener">Rs 115 crore SWAMIH funds set to revive Antriksh Valley project</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Aditya Dev/Feb 28, 2026, 03:54 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">SWAMIH Fund is injecting ₹115 crore into Diligent Builders’ stalled Antr Indian…</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>The funding is an investment opportunity; it does not directly affect employees’ salaries or personal finances.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Rs 115 crore total infusion by SWAMIH Fund into Diligent Builders' Antriksh Valley project, with Rs 95 crore upfront and Rs 20 crore via secured NCDs.</li>
+          
+          <li>Project originally launched 2011‑12, stalled until 2023‑24, now targeted for completion in December 2027; SBI Capital will monitor execution.</li>
+          
+          <li>Developer cleared Rs 45 crore land dues, Rs 5.5 crore RERA penalties, and ~Rs 15 crore exit claims from buyers before revival.</li>
+          
+          <li>Investment offers a committed 12% IRR, secured by mortgage‑tied‑land, receivables‑charge, equity pledge and promoters’ personal guarantees.</li>
+          
+          <li>Additional stalled projects in Ghaziabad and Mathura (Vrindavan) are planned for revival.</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/noida/rs-115-crore-swamih-funds-set-to-revive-antriksh-valley-project/articleshow/128863548.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business labour laws & salary" data-index="21">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#d97706">Labour Laws & Salary</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/pune/pmc-makes-move-to-intensify-land-acquisition-for-pending-section-of-kharadi-shivane-road/articleshow/128863549.cms" target="_blank" rel="noopener">PMC makes move to intensify land acquisition for pending section of Kharadi-Shivane Road</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Prasad Kulkarni/Feb 28, 2026, 03:54 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>The accelerated road work may reduce commute times but could temporarily affect local workers’ earnings if construction sites are disrupted.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>PMC has decided to intensify …</li>
+          
+          <li>...</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/pune/pmc-makes-move-to-intensify-land-acquisition-for-pending-section-of-kharadi-shivane-road/articleshow/128863549.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="22">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/hc-issues-notices-over-v-c-appointment-of-rajuvas/articleshow/128863555.cms" target="_blank" rel="noopener">HC issues notices over V-C appointment of RAJUVAS</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:54 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This news is primarily informational for employees.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The Rajasthan High Court issued notices to the governor (Haribhau Bagde), registrar of RAJUVAS, state government, and vice‑chancellor in a petition challenging Dr Sumant Vyas’s appointment as vice‑chief at RAJÄVAS.</li>
+          
+          <li>Dr Sumant Vyas was appointed by the governor on 4 September 2025; the search committee was formed on 23 April 2025 and an advertisement – the first call for applications – was issued on 5 May 202‑?</li>
+          
+          <li>The court’s order — issued Thursday … (?? ) — directed the respondents to file their replies and saw the a‑ ..</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/hc-issues-notices-over-v-c-appointment-of-rajuvas/articleshow/128863555.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics" data-index="23">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/chennai/congress-to-hold-talks-with-dmk-today-says-chodankar/articleshow/128863545.cms" target="_blank" rel="noopener">Congress to hold talks with DMK today, says Chodankar</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Feb 28, 2026, 03:54 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Girish Chod‑nkar, AICC‑tied …</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Girish Chodankar, AICC chief for Tamil Nadu, said Congress will hold talks with the DMK seat‑sharing panel on Saturday, 27 March 2024.</li>
+          
+          <li>He denied speculation that Congress was also negotiating with TVK or Vijayakanth’s party, insisting only DMK is involved.</li>
+          
+          <li>The status of a Rajya Sabha seat for Congress in Tamil Nadu remains undecided; Chodankar said it would be discussed during the upcoming DMK talks.</li>
+          
+          <li>DMK MP Kanimozhi is reportedly waiting to meet Rahul Gandhi in Delhi after the meeting.</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/chennai/congress-to-hold-talks-with-dmk-today-says-chodankar/articleshow/128863545.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business labour laws & salary" data-index="24">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#d97706">Labour Laws & Salary</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/noida/transformer-in-noida-shopping-hub-explodes-2-suffer-50-burns-after-hot-oil-spill/articleshow/128863554.cms" target="_blank" rel="noopener">Transformer in Noida shopping hub explodes, 2 suffer 50% burns after hot oil spill</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Advitya Bahl/Feb 28, 2026, 03:54 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Two 23‑year‑old and …</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>Employees may face higher insurance premiums and potential workplace safety training costs.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Two men, Vijay Kumar (23) and Harsh (33), sustained 50% burns after a transformer explosion near Sector 18 market, Noida, on Friday around 4 pm. They were treated at Safdarjung Hospital after initial transfer to Kailash Hospital; both remain in critical condition. The incident involved a spark in a CTPT unit that caused an oil leak but no explosion according to the power department. No police complaint has been filed yet.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/noida/transformer-in-noida-shopping-hub-explodes-2-suffer-50-burns-after-hot-oil-spill/articleshow/128863554.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business science & health" data-index="25">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#0891b2">Science & Health</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/nddb-to-link-8000-villages-in-raj-to-dairy-co-ops-in-next-five-years/articleshow/128863535.cms" target="_blank" rel="noopener">NDDB to link 8,000 villages in Raj to dairy co-ops in next five years</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:53 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">NDDB is expanding dairy cooperatives to 75,000 villages over five years, targeting 8,000 new villages in Rajasthan. The plan includes infrastructure upgrades and aims to shift more milk into the organized sector, boosting farmer income and product quality.
+</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>The expansion mainly benefits farmers and rural communities; it has minimal direct effect on urban employees’ finances.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>NDDB plans to expand dairy cooperatives to 75,000 villages nationwide over five years, including ~8,000 in Rajasthan.</li>
+          
+          <li>The initiative will strengthen infrastructure in 4,000 existing villages with milk‑testing facilities and other systems.</li>
+          
+          <li>India’s annual milk production has risen from 15–20 million metric tonnes a few decades ago to nearly 250 million metric tonnes today, about 25% of global output.</li>
+          
+          <li>Only 35‑40% of marketable surplus milk flows through the organized sector; ~60% remains unorganized.</li>
+          
+          <li>The launch event "Rangeelo 2026" was held at Sri Karan Narendra Agriculture University in Jobner and inaugurated by Rajasthan’s minister Gopalan Jawahar Singh Bedam.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/nddb-to-link-8000-villages-in-raj-to-dairy-co-ops-in-next-five-years/articleshow/128863535.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business taxation & budget" data-index="26">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#dc2626">Taxation & Budget</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/gurgaon/gurgaon-school-that-failed-to-give-admit-cards-tried-adjustment-with-delhi-palwal-institutes/articleshow/128863526.cms" target="_blank" rel="noopener">Gurgaon school that failed to give admit cards tried ‘adjustment’ with Delhi, Palwal institutes</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Nikhil Sharma/Feb 28, 2026, 03:53 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">A Delhi‑based school, Educrest International School, failed to secure CBSE affiliation and tried to enrol 11 Class 10 students elsewhere, leaving them unable to sit for CBSE exams; parents sought court help to allow the children to take state board papers.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This article does not affect an employee’s financial or career prospects directly.</p>
+        </div>
+        
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/gurgaon/gurgaon-school-that-failed-to-give-admit-cards-tried-adjustment-with-delhi-palwal-institutes/articleshow/128863526.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business science & health" data-index="27">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#0891b2">Science & Health</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/tigress-translocated-from-mps-bandhavgarh-reserve-to-mukundra-in-raj/articleshow/128863537.cms" target="_blank" rel="noopener">Tigress translocated from MP’s Bandhavgarh reserve to Mukundra in Raj</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:53 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This …</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Bhopal</li>
+          
+          <li>...</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/tigress-translocated-from-mps-bandhavgarh-reserve-to-mukundra-in-raj/articleshow/128863537.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics" data-index="28">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/kolkata/voters-list-to-be-out-with-7-08cr-names-but-not-all-eligible-to-vote/articleshow/128863523.cms" target="_blank" rel="noopener">Voters’ list to be out with 7.08cr names but not all eligible to vote</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Kaushik.Pradhan@timesofindia.com/Feb 28, 2026, 03:53 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Bengal will release its final electoral roll online by noon, after a lengthy revision that will delete or adjudicate about 66 lakh names from the draft list.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>Informational</p>
+        </div>
+        
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/kolkata/voters-list-to-be-out-with-7-08cr-names-but-not-all-eligible-to-vote/articleshow/128863523.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="29">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/ahmedabad/gujarat-secondary-and-higher-secondary-education-board-begins-cctv-scrutiny-of-hsc-ssc-exams/articleshow/128863510.cms" target="_blank" rel="noopener">Gujarat Secondary and Higher Secondary Education Board begins CCTV scrutiny of HSC, SSC exams</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Feb 28, 2026, 03:52 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Gujarat’s education board has set up multiple CCTV‑review centres to scrutinise exam footage and curb malpractice in Class 10 and 12 exams.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct effect on employees’ finances or careers.</p>
+        </div>
+        
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/ahmedabad/gujarat-secondary-and-higher-secondary-education-board-begins-cctv-scrutiny-of-hsc-ssc-exams/articleshow/128863510.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="30">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/chennai/stalin-launches-energy-dept-projects-worth-1971cr-in-city-suburbs/articleshow/128863498.cms" target="_blank" rel="noopener">Stalin launches energy dept projects worth 1,971cr in city, suburbs</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Feb 28, 2026, 03:52 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>The project announcement is mainly informational for employees; it does not directly affect their finances or career.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>1. The state energy department projects inaugurated by CM M K Stalin total value of ₹1,971 crore (≈$260 million).</li>
+          
+          <li>2. 38 sub‑stations – the most‑used ……………………………………………………… Kath? ...</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/chennai/stalin-launches-energy-dept-projects-worth-1971cr-in-city-suburbs/articleshow/128863498.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics" data-index="31">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/court-acquits-14-in-malpura-riot-twin-murder-case/articleshow/128863505.cms" target="_blank" rel="noopener">Court acquits 14 in Malpura riot twin murder case</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:52 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The court acquitted 14 …</li>
+          
+          <li>...</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/court-acquits-14-in-malpura-riot-twin-murder-case/articleshow/128863505.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics labour laws & salary" data-index="32">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#d97706">Labour Laws & Salary</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/india/worse-than-traffic-challan-jk-hc-nixes-psa-detention-order/articleshow/128867087.cms" target="_blank" rel="noopener">‘Worse than traffic challan’: J&amp;K HC nixes PSA detention order</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Naseer Ganai/ TNN /Feb 28, 2026, 03:50 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>The decision highlights how political misuse of preventive detention can affect employees’ security and legal standing.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The Jammu & Kashmir High Court (J&K H.C.) – a single‑judge bench — quashed the April 20, 2024 detention …</li>
+          
+          <li>...</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/india/worse-than-traffic-challan-jk-hc-nixes-psa-detention-order/articleshow/128867087.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="sports & entertainment" data-index="33">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#f59e0b">Sports & Entertainment</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/sports/nfl/news/gauge-how-she-reacts-travis-kelce-hints-at-how-he-won-over-taylor-swift-ahead-of-million-dollar-wedding/articleshow/128865296.cms" target="_blank" rel="noopener">“Gauge how she reacts”: Travis Kelce hints at how he won over Taylor Swift ahead of million dollar wedding</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Mahima Roy/ TIMESOFINDIA.COM /Feb 28, 2026, 03:50 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct effect on an employee’s finances or career.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Travis Kel‑…</li>
+          
+          <li>…</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/sports/nfl/news/gauge-how-she-reacts-travis-kelce-hints-at-how-he-won-over-taylor-swift-ahead-of-million-dollar-wedding/articleshow/128865296.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics labour laws & salary" data-index="34">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#d97706">Labour Laws & Salary</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/india/retirement-age-disparity-service-condition-of-armed-forces-need-revisit-says-sc/articleshow/128866948.cms" target="_blank" rel="noopener">Retirement age disparity &amp; service condition of armed forces need revisit, says SC</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Dhananjay Mahapatra/ TNN /Feb 28, 2026, 03:46 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>The decision may affect the retirement age and pension eligibility of current Coast Guard officers, but it does not directly impact most private‑sector employees’ finances.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Rule 20(1) and Rule 20 of Coast Guard …</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/india/retirement-age-disparity-service-condition-of-armed-forces-need-revisit-says-sc/articleshow/128866948.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="sports & entertainment politics" data-index="35">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#f59e0b">Sports & Entertainment</span>
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/entertainment/english/hollywood/news/susan-sarandon-fired-from-agency-for-calling-for-ceasefire-in-gaza-oscar-winner-barred-from-tv-roles-and-hollywood-films-watch/articleshow/128866250.cms" target="_blank" rel="noopener">Susan Sarandon FIRED from agency for  calling for ceasefire in Gaza; Oscar-winner barred from TV roles and Hollywood films - WATCH</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TOI Entertainment Desk/ TNN &amp; Agencies /Feb 28, 2026, 03:40 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This article does not directly affect Indian employees’ finances or careers.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Susan Sar‑…</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/entertainment/english/hollywood/news/susan-sarandon-fired-from-agency-for-calling-for-ceasefire-in-gaza-oscar-winner-barred-from-tv-roles-and-hollywood-films-watch/articleshow/128866250.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="workplace culture technology" data-index="36">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#db2777">Workplace Culture</span>
+          
+          <span class="badge" style="background:#8b5cf6">Technology</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/world/us/shoes-outside-silicon-valley-startups-adopt-desi-habit/articleshow/128866735.cms" target="_blank" rel="noopener">Shoes outside! Silicon Valley startups adopt desi habit</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:40 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">A trend of shoe‑free office entrances has emerged among U.S. tech startups, echoing Indian home customs and sparking discussion on workplace culture.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact; it only affects daily routine.</p>
+        </div>
+        
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/world/us/shoes-outside-silicon-valley-startups-adopt-desi-habit/articleshow/128866735.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="37">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/india/sc-raps-bengal-for-rushing-to-court-daily-against-sir/articleshow/128866653.cms" target="_blank" rel="noopener">SC raps Bengal for rushing to court daily against SIR</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Dhananjay Mahapatra/ TNN /Feb 28, 2026, 03:39 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Supreme Court reprimands West Bengal government for repeatedly delaying the Special Intensive Revision of electoral rolls and directs deployment of judicial officers from other states to expedite the process.</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees.</p>
+        </div>
+        
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/india/sc-raps-bengal-for-rushing-to-court-daily-against-sir/articleshow/128866653.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics" data-index="38">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/kolkata/shah-rajnath-among-6-mantris-lined-up-for-parivartan-yatra/articleshow/128863489.cms" target="_blank" rel="noopener">Shah, Rajnath among 6 mantris lined up for ‘Parivartan Yatra’</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Rohit Khanna/Feb 28, 2026, 03:37 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">In West Bengal, BJP leaders including Amit Shah, Rajnath Singh and Nitin Nabin will kick off a 5,000‑‑km‐tied‑…</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees; it is purely political campaigning.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Six Union ministers including Amit Shah and Rajnath Singh will launch BJP's 5,000‑km Parivartan Yatra in West Bengal starting Sunday, with PM Narendra Modi addressing the final rally in late March.</li>
+          
+          <li>The yatra covers nearly 5,000 km over five days, touching about 250 assembly constituencies, plus separate programmes for 44 additional constituencies and around 300 small meetings and 64 large gatherings.</li>
+          
+          <li>Key launch points: Cooch Behar (Nitin Nabin), Krishnanagar (JP Nadda), Jhargram and Asansol (Dharmendra Pradhan & Annpurna Devi); Monday launches from Raidighi, Amta, Hasan, Sandeshkhali, Islampur.</li>
+          
+          <li>The campaign resumes on March 5 after a two‑day break for Dol Yatra.</li>
+          
+          <li>BJP claims the yatra will challenge the incumbent Trinamool government and address security concerns along Bengal’s border with Bangladesh.</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/kolkata/shah-rajnath-among-6-mantris-lined-up-for-parivartan-yatra/articleshow/128863489.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics law & judiciary" data-index="39">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#6b7280">Law & Judiciary</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/chennai/dharmadhikari-is-new-madras-high-court-chief-justice/articleshow/128863488.cms" target="_blank" rel="noopener">Dharmadhikari is new Madras high court Chief Justice</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Suresh Kumar/Feb 28, 2026, 03:37 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Justice S. A. Dharmadhikari has been appointed as the new — ..</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This article does not affect employees directly.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Justice S. A. Dharmadhikari has been appointed as Chief Justice of the Madras High Court, succeeding Manindra Mohan Shrivastava who will retire on March 5, 2025.</li>
+          
+          <li>The Supreme Court collegium recommended the transfer on February 26, 2025, and stated that a chief‑justice nominee should be transferred at least two months before the vacancy to allow familiarisation with the court’s affairs.</li>
+          
+          <li>Dharmadhikari was born on July 8, 1966, in Raipur (now Chhattisgarh) and has served as an advocate‑lawyer and senior standing counsel for the Union Government from 2000–2015, before becoming a judge of the Madhya Pradesh High Court in April 2016 and permanent in March 2018.</li>
+          
+          <li>He was transferred to the Kerala High Court on April 23, 2025, where he is currently fifth‑senior in the bench.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/chennai/dharmadhikari-is-new-madras-high-court-chief-justice/articleshow/128863488.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="40">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/chandigarh/moga-police-arrest-duo-recover-5-weapons/articleshow/128863458.cms" target="_blank" rel="noopener">Moga police arrest duo, recover 5 weapons</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:36 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>We…</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Lakhwinder Singh (20) and Nishan Singh (32) were arrested on …</li>
+          
+          <li>We need to...</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>{&quot;Politics&quot;:&quot;The article discusses political implications of cross‑border terrorism and &quot;&quot;?&quot;&quot;</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/chandigarh/moga-police-arrest-duo-recover-5-weapons/articleshow/128863458.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="41">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/chandigarh/hc-extends-stay-on-alienation-of-pspcl-properties/articleshow/128863476.cms" target="_blank" rel="noopener">HC extends stay on alienation of PSPCL properties</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Bharat Khanna/Feb 28, 2026, 03:36 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">The Punjab and Haryana High Court has kept a halt on the sale or transfer of Punjab State Power Corporation assets, citing the company’s heavy debt load.  The court wants the state government‑‑‑…</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct effect on employees’ finances or careers.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>Punjab and Haryana High Court extended interim stay on PSPCL property alienation until March 13, 2024.</li>
+          
+          <li>PSP © (PSPCL) has unpaid electricity‑dues from state departments totaling ₹2.582 billion and subsidy arrears over ₹10 billion.</li>
+          
+          <li>Proposed transfer: ~50 acres of PSPCL land in Badungar village to PUDA under OUVGL scheme for auction/development.</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/chandigarh/hc-extends-stay-on-alienation-of-pspcl-properties/articleshow/128863476.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics science & health" data-index="42">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#0891b2">Science & Health</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/nagpur/hc-demands-zone-wise-data-on-de-choking-of-trees/articleshow/128863467.cms" target="_blank" rel="noopener">HC demands zone-wise data on de-choking of trees</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Vaibhav Ganjapure , Lalit Patki/Feb 28, 2026, 03:36 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">The Bombay High Court’s Nagpur Bench ordered municipal authorities to supply a zone‑‑ …</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This …</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The Nagpur Bench of the Bombay High Court issued directives on Friday to provide detailed zone‑wise data on trees freed from cement and concrete encasements.</li>
+          
+          <li>A division bench composed of Justices Anil Kilor and Raj Wakode directed authorities to submit a comprehensive report; failure to do so could lead to disclosure of responsible officials’ names.</li>
+          
+          <li>The court’s committee found that 528 trees in Nagpur were encased in cement or concrete, violating urban green regulations.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/nagpur/hc-demands-zone-wise-data-on-de-choking-of-trees/articleshow/128863467.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="43">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/fully-automated-md-unit-busted-in-jalore-5-held/articleshow/128863475.cms" target="_blank" rel="noopener">Fully-automated MD unit busted in Jalore; 5 held</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:36 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">The Rajasthan Police Anti‑Narcotics Task Force dismantled a fully‑automated MD‑to‑opium conversion unit in Jalore, seizing chemicals worth ₹12–15 cr and large‑scale opium‑production facilities across multiple districts.  The
+</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This article does not directly affect employees.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>IG Vikas Kumar said the ANTF seized about 400 litre of chemicals from a fully‑automated MD drug‑processing unit in Jalore, worth an estimated ₹12–15 crore.</li>
+          
+          <li>In Udaipur the raid recovered roughly seven lakh opium plants that could yield ~1,000 kg of opium and 188 quintals of poppy husk, valued at about ₹100 cr.</li>
+          
+          <li>Other seizures included 254 kg of illegal pop‑husk in Jodhpur (₹39 lakh), 2 kg of opium in Chittorgarh (₹12 lakh) and 99 g of MD in Barmer (₹3 lakh).</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/fully-automated-md-unit-busted-in-jalore-5-held/articleshow/128863475.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="business taxation & budget" data-index="44">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+          <span class="badge" style="background:#dc2626">Taxation & Budget</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/pune/private-entities-to-run-60-property-registration-centres-pune-mumbai-to-have-facilities-in-first-phase/articleshow/128863403.cms" target="_blank" rel="noopener">Private entities to run 60 property registration centres; Pune, Mumbai to have facilities in first phase</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Nisha Nambiar/Feb 28, 2026, 03:36 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>Employees may face higher out‑of‑pocket costs when registering property, affecting their personal finances.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The Maharashtra state government plans to open 60 private‑run property registration centres, modeled after passport service centres, with the first phase launching five centres in Mumbai, Pune, Thane and Nagpur within six months.</li>
+          
+          <li>Each centre will charge an additional service fee up to ₹6,000 per document on top of existing government‑tied‑to‑registration‑albeit‑the‑fee‑structure‑…</li>
+          
+          <li>The revenue department had …</li>
+          
+          <li>...</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/pune/private-entities-to-run-60-property-registration-centres-pune-mumbai-to-have-facilities-in-first-phase/articleshow/128863403.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="45">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/jaipur/confusion-over-holi-date-as-rbse-exams-slated-for-march-4/articleshow/128863465.cms" target="_blank" rel="noopener">Confusion over Holi date as RBSE exams slated for March 4</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:36 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">The...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This decision has no direct impact on an employee’s financial or career prospects.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>RBSE exams scheduled for March 4, 2025, with subjects: history, business studies, agricultural chemistry, and chemistry.</li>
+          
+          <li>Rajasthan government declared holidays on March 2 and 3, but no change to exam date announced.</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/jaipur/confusion-over-holi-date-as-rbse-exams-slated-for-march-4/articleshow/128863465.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics law & justice" data-index="46">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#6b7280">Law & Justice</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/chennai/city-court-summons-dmk-ex-minister-ponmudi/articleshow/128863451.cms" target="_blank" rel="noopener">City court summons DMK ex-minister Ponmudi</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; TNN /Feb 28, 2026, 03:35 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">...</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>No direct financial impact on employees.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The former DMK minister K Pon…</li>
+          
+          <li>We need to produce answer</li>
+          
+        </ul>
+        
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/chennai/city-court-summons-dmk-ex-minister-ponmudi/articleshow/128863451.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <article class="card" data-categories="politics business" data-index="47">
+      <div class="card-header">
+        <div class="badges">
+          
+          <span class="badge" style="background:#3b82f6">Politics</span>
+          
+          <span class="badge" style="background:#059669">Business</span>
+          
+        </div>
+        <h2 class="card-title">
+          
+          <a href="https://timesofindia.indiatimes.com/city/noida/up-govts-infra-fund-freeze-hit-gda-coffers-over-years-cag/articleshow/128863448.cms" target="_blank" rel="noopener">UP govt’s infra fund freeze hit GDA coffers over years: CAG</a>
+          
+        </h2>
+        <div class="meta">
+          
+          <span class="meta-item">&#9998; Abhijay Jha/Feb 28, 2026, 03:35 ISTCommentsShareAA+Text SizeSmallMediumLarge</span>
+          
+          
+          
+          <span class="meta-item">&#127760; TOIProvider</span>
+          
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <p class="summary">Uttar Pradesh’s failure to release a 2 percent infrastructure cess collected from property buyers has left Ghaziabad Development Authority short‑topped on its budget, so …</p>
+        
+        
+        <div class="impact-box">
+            <div class="impact-header">
+                <span class="impact-label">Impact Score</span>
+                <span class="impact-dots"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            </div>
+            <p class='impact-text'>This news mainly informs employees about state fiscal mismanagement but does not directly affect their personal finances.</p>
+        </div>
+        
+        
+        <ul class="facts-list">
+          
+          <li>The CAG audit found that from 2017‑2022, Ghaziabad Development Authority (GDA) demanded Rs 317 crore in infrastructure cess but had not received it, with the outstanding balance rising to Rs 585 crore by September 2023.</li>
+          
+          <li>In August 2024, the Uttar Pradesh cabinet approved a policy to transfer infrastructure cess directly to development authorities; since 2025 GDA has begun receiving the held‑up funds and only about Rs 43 crore remains pending.</li>
+          
+          <li>The audit reported that GDA’s revenue during 2017‑22 was lower by 48%–58% compared with other years, largely due to the non‑release of the cess, which is a major source of revenue for such agencies.</li>
+          
+        </ul>
+        
+        
+        <details class="reasoning">
+          <summary>View reasoning</summary>
+          <p>:{</p>
+        </details>
+        
+      </div>
+      <div class="card-footer">
+        
+        <a href="https://timesofindia.indiatimes.com/city/noida/up-govts-infra-fund-freeze-hit-gda-coffers-over-years-cag/articleshow/128863448.cms" target="_blank" rel="noopener" class="read-link">Read Article &rarr;</a>
+        
+      </div>
+    </article>
+    
+    <div class="no-results" id="no-results">No articles match this filter.</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const buttons = document.querySelectorAll('.filter-btn');
+  const cards = document.querySelectorAll('.card');
+  const noResults = document.getElementById('no-results');
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filter = btn.getAttribute('data-filter');
+      let visible = 0;
+      cards.forEach(card => {
+        if (filter === 'all') {
+          card.classList.remove('hidden');
+          visible++;
+        } else {
+          const cats = card.getAttribute('data-categories') || '';
+          if (cats.includes(filter)) {
+            card.classList.remove('hidden');
+            visible++;
+          } else {
+            card.classList.add('hidden');
+          }
+        }
+      });
+      noResults.style.display = visible === 0 ? 'block' : 'none';
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
